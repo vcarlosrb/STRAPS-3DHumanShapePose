@@ -146,3 +146,12 @@ checkpoints/*
 !checkpoints/README.md
 
 data/*.npz
+
+# Virtualenv
+STRAPS
+
+# Evaluation dataset
+ssp-3d
+
+# Logs
+logs

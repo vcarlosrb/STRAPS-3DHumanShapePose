@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from smplx import SMPL as _SMPL
-from smplx.body_models import ModelOutput
+from smplx.body_models import SMPLOutput
 from smplx.lbs import vertices2joints
 
 import config
@@ -32,7 +32,7 @@ class SMPL(_SMPL):
         h36m_joints = vertices2joints(self.J_regressor_h36m, smpl_output.vertices)
         all_joints = torch.cat([smpl_output.joints, extra_joints, cocoplus_joints,
                                 h36m_joints], dim=1)
-        output = ModelOutput(vertices=smpl_output.vertices,
+        output = SMPLOutput(vertices=smpl_output.vertices,
                              global_orient=smpl_output.global_orient,
                              body_pose=smpl_output.body_pose,
                              joints=all_joints,

@@ -10,6 +10,7 @@ from detectron2.engine import DefaultPredictor
 
 from PointRend.point_rend import add_pointrend_config
 from DensePose.densepose import add_densepose_config
+from bodyMeasurement.body_measurement_from_smpl import getBodyMeasurement
 
 import config
 
@@ -22,6 +23,7 @@ from renderers.weak_perspective_pyrender_renderer import Renderer
 
 from utils.image_utils import pad_to_square
 from utils.cam_utils import orthographic_project_torch
+from utils.reposed_utils import getReposedRotmats
 from utils.joints2d_utils import undo_keypoint_normalisation
 from utils.label_conversions import convert_multiclass_to_binary_labels, \
     convert_2Djoints_to_gaussian_heatmaps
@@ -145,8 +147,20 @@ def predict_3D(input,
                 pred_vertices2d = undo_keypoint_normalisation(pred_vertices2d,
                                                               proxy_rep_input_wh)
 
-                pred_reposed_smpl_output = smpl(betas=pred_shape)
+                reposed_pose_rotmats, reposed_glob_rotmats = getReposedRotmats(1, device)
+
+                pred_reposed_smpl_output = smpl(
+                    betas=pred_shape,
+                    body_pose=reposed_pose_rotmats,
+                    global_orient=reposed_glob_rotmats,
+                    pose2rot=False
+                )
                 pred_reposed_vertices = pred_reposed_smpl_output.vertices
+                weight, height, chest_length, hip_length = getBodyMeasurement(pred_reposed_vertices, smpl.faces)
+                print("WEIGHT=>", weight)
+                print("HEIGHT=>", height)
+                print("CHEST=>", chest_length)
+                print("HIP=>", hip_length)
 
             # Numpy-fying
             pred_vertices = pred_vertices.cpu().detach().numpy()[0]
