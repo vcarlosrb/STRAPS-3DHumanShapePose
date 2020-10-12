@@ -74,7 +74,7 @@ train_path = 'data/amass_up3d_3dpw_train.npz'
 val_path = 'data/up3d_3dpw_val.npz'
 
 # Path to save model weights to (without .tar extension).
-model_save_path = os.path.join('./checkpoints/straps_model_checkpoint')
+model_save_path = os.path.join('./checkpoints/model_training/straps_model_checkpoint_exp001')
 log_path = os.path.join('./logs/straps_model_logs_exp001.pkl')
 if not os.path.isdir('./checkpoints/model_training'):
     os.makedirs('./checkpoints/model_training')
