@@ -161,6 +161,7 @@ def predict_3D(input,
                 print("HEIGHT=>", height)
                 print("CHEST=>", chest_length)
                 print("HIP=>", hip_length)
+                print("-------------------------------------------")
 
             # Numpy-fying
             pred_vertices = pred_vertices.cpu().detach().numpy()[0]

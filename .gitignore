@@ -155,3 +155,6 @@ ssp-3d
 
 # Logs
 logs
+
+# SMPL Pytorch
+smplpytorch
