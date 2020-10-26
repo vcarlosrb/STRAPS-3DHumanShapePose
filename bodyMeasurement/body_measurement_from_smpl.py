@@ -58,8 +58,8 @@ def getChest (sections, armpits_location):
 def getCrotch(sections):
     location_percentage = 47 # porcentaje
     approximate_location = math.floor(location_percentage*len(sections)/100)
-    section_min = approximate_location - 10
-    section_max = approximate_location + 10
+    section_min = approximate_location - 15
+    section_max = approximate_location + 15
     range_sections = range(section_min, section_max)
     
     crotch = None
@@ -113,9 +113,10 @@ def getLargerAreaPolygon(section):
     higher = 0
     polygon = None
     for pol in section.polygons_closed:
-        if pol.area > higher:
-            higher = pol.area
-            polygon = pol
+        if pol != None:
+            if pol.area > higher:
+                higher = pol.area
+                polygon = pol
     return polygon
 
 def getHeight(mesh):
