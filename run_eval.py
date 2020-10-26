@@ -22,7 +22,7 @@ def main(input_path, shape_label_path, gender_label_path, checkpoint_path, devic
 
     image_fnames = [f for f in sorted(os.listdir(input_path)) if f.endswith('.png') or f.endswith('.jpg')]
 
-    file_path = 'evaluation_measurement2.pickle'
+    file_path = 'evaluation_measurement_exp_1.pickle'
     evaluation_file = {
         'pve_neutral': [],
         'height': [],

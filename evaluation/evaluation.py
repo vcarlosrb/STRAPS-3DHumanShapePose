@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import torch
+import trimesh
 from smplx.lbs import batch_rodrigues
 
 from detectron2.config import get_cfg
@@ -27,6 +28,8 @@ from utils.joints2d_utils import undo_keypoint_normalisation
 from utils.label_conversions import convert_multiclass_to_binary_labels, \
     convert_2Djoints_to_gaussian_heatmaps
 from utils.rigid_transform_utils import rot6d_to_rotmat
+
+from bodyMeasurement.body_measurement_from_smpl import getHeight
 
 import matplotlib
 matplotlib.use('agg')
@@ -119,15 +122,48 @@ def evaluate(input,
     proxy_rep = proxy_rep[None, :, :, :]  # add batch dimension
     proxy_rep = torch.from_numpy(proxy_rep).float().to(device)
 
+    height = getHeightFromSample(torch.from_numpy(shape.reshape(1, shape.shape[0])).to(device).detach(), gender, device)
+    height = np.asarray([height])
+    height = torch.FloatTensor(height.reshape(height.shape[0], 1)).to(device)
+
     # Predict 3D
     regressor.eval()
     with torch.no_grad():
-        pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep)
+        pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height)
 
     #pve_neutral_pose_scale = compute_pve_neutral_pose_scale_corrected(pred_shape.to(device).detach(), torch.from_numpy(shape.reshape(1, shape.shape[0])).to(device).detach(), gender, device)
     pve_neutral_pose_scale, weight_error, height_error, chest_error, hip_error = measurementError(pred_shape.to(device).detach(), torch.from_numpy(shape.reshape(1, shape.shape[0])).to(device).detach(), gender, device)
         
     return pve_neutral_pose_scale, weight_error, height_error, chest_error, hip_error
+
+def getHeightFromSample(shape, gender, device):
+    reposed_pose_rotmats, reposed_glob_rotmats = getReposedRotmats(1, device)
+    if gender == 'm':
+        smpl_male = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='male').to(device)
+        target_smpl_neutral_pose_output = smpl_male(
+            betas=shape,
+            body_pose=reposed_pose_rotmats,
+            global_orient=reposed_glob_rotmats,
+            pose2rot=False
+        )
+        faces = smpl_male.faces
+    elif gender == 'f':
+        smpl_female = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='female').to(device)
+        target_smpl_neutral_pose_output = smpl_female(
+            betas=shape,
+            body_pose=reposed_pose_rotmats,
+            global_orient=reposed_glob_rotmats,
+            pose2rot=False
+        )
+        faces = smpl_female.faces
+    
+    target_smpl_neutral_pose_vertices = target_smpl_neutral_pose_output.vertices
+    vertices = target_smpl_neutral_pose_vertices.cpu().detach().numpy()
+    vertices = vertices.reshape(vertices.shape[1], vertices.shape[2])
+
+    mesh = trimesh.Trimesh(vertices, faces)
+    return getHeight(mesh)
+
 
 def measurementError(predicted_smpl_shape, target_smpl_shape, gender, device):
     reposed_pose_rotmats, reposed_glob_rotmats = getReposedRotmats(1, device)
