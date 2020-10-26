@@ -61,7 +61,7 @@ if __name__ == '__main__':
     args.input = './ssp-3d/images'
     args.shape_label = './ssp-3d/labels/shapes.npy'
     args.gender_label = './ssp-3d/labels/genders.npy'
-    args.checkpoint = 'checkpoints/model_training_past/straps_model_checkpoint_exp001_epoch0.tar'
+    args.checkpoint = 'checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp001_epoch34.tar'
     args.silh_from = 'densepose'
 
     main(args.input, args.shape_label, args.gender_label, args.checkpoint, device, args.silh_from)

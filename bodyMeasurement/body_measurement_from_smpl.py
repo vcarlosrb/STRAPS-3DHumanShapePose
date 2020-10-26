@@ -124,12 +124,18 @@ def getHeight(mesh):
     slice_2D, _ = slice_r.to_planar()
     minY = slice_2D.bounds[0][1]
     maxY = slice_2D.bounds[1][1]
-    return maxY - minY
+    return (maxY - minY) # En metros
 
 def getWeight(mesh):
     body_density = 0.985
     return (mesh.volume*1000) * body_density
 
+def getHeightsWithBatchSize(vertices, faces):
+    heights = []
+    for index in range(vertices.shape[0]):
+        mesh = trimesh.Trimesh(vertices[index].cpu().detach().numpy(), faces)
+        heights.append(getHeight(mesh))
+    return heights
 
 def getBodyMeasurementWithBatchSize(vertices, faces, batch_size):
     weights = []

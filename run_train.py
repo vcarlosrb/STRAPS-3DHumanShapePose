@@ -40,10 +40,10 @@ print("ResNet layers:", resnet_layers)
 print("IEF Num iters:", ief_iters)
 
 # ----------------------- Hyperparameters -----------------------
-num_epochs = 1000
-batch_size = 32
+num_epochs = 50
+batch_size = 60
 lr = 0.0001
-epochs_per_save = 10
+epochs_per_save = 2
 print("\nBatch size:", batch_size)
 print("LR:", lr)
 print("Image width/height:", config.REGRESSOR_IMG_WH)
@@ -69,13 +69,13 @@ print("Save val metrics:", save_val_metrics)
 
 # ----------------------- Paths -----------------------
 # Path to npz with training data.
-train_path = 'data/amass_up3d_3dpw_train.npz'
+train_path = 'data/amass_up3d_3dpw_train_sample.npz'
 # Path to npz with validation data.
-val_path = 'data/up3d_3dpw_val.npz'
+val_path = 'data/up3d_3dpw_val_sample.npz'
 
 # Path to save model weights to (without .tar extension).
-model_save_path = os.path.join('./checkpoints/model_training/straps_model_checkpoint_exp001')
-log_path = os.path.join('./logs/straps_model_logs_exp001.pkl')
+model_save_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp001_1')
+log_path = os.path.join('./logs/straps_model_transfer_learning_logs_exp001_1.pkl')
 if not os.path.isdir('./checkpoints/model_training'):
     os.makedirs('./checkpoints/model_training')
 if not os.path.isdir('./logs'):
@@ -209,6 +209,30 @@ if checkpoint_path is not None:
     criterion.load_state_dict(checkpoint['criterion_state_dict'])
 else:
     checkpoint = None
+
+def transfer_learning(checkpoint_path, model, criterion, optimiser):
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model_dict = model.state_dict()
+    pretrained_dict = checkpoint['model_state_dict']
+    new_dict = {}
+    for key, value in model_dict.items():
+        replace = False
+        for k, v in pretrained_dict.items():
+            if k == key:
+                new_dict[key] = v
+        if (key in new_dict) == False:
+            new_dict[key] = value
+
+    model_dict.update(new_dict)
+    model.load_state_dict(new_dict)
+    optimiser.load_state_dict(checkpoint['optimiser_state_dict'])
+    criterion.load_state_dict(checkpoint['criterion_state_dict'])
+
+    return model, criterion, optimiser
+
+
+n_checkpoint_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp001_epoch34.tar')
+regression, criterion, optimiser = transfer_learning(n_checkpoint_path, regressor, criterion, optimiser)
 
 train_synthetic_otf_rendering(device=device,
                               regressor=regressor,

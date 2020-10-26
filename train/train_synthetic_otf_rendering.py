@@ -7,6 +7,8 @@ from tqdm import tqdm
 
 from metrics.train_loss_and_metrics_tracker import TrainingLossesAndMetricsTracker
 
+from bodyMeasurement.body_measurement_from_smpl import getHeightsWithBatchSize
+
 from utils.checkpoint_utils import load_training_info_from_checkpoint
 
 from utils.cam_utils import perspective_project_torch, orthographic_project_torch
@@ -15,6 +17,7 @@ from utils.label_conversions import convert_multiclass_to_binary_labels_torch, \
     convert_2Djoints_to_gaussian_heatmaps_torch
 from utils.joints2d_utils import check_joints2d_visibility_torch
 from utils.image_utils import batch_crop_seg_to_bounding_box, batch_resize
+from utils.reposed_utils import getReposedRotmats
 
 from augmentation.smpl_augmentation import augment_smpl
 from augmentation.cam_augmentation import augment_cam_t
@@ -95,6 +98,7 @@ def train_synthetic_otf_rendering(device,
     # Loading mean shape (for augmentation function)
     mean_smpl = np.load(config.SMPL_MEAN_PARAMS_PATH)
     mean_shape = torch.from_numpy(mean_smpl['shape']).float().to(device)
+    reposed_pose_rotmats, reposed_glob_rotmats = getReposedRotmats(batch_size, device)
 
     # Starting training loop
     for epoch in range(current_epoch, num_epochs):
@@ -141,8 +145,17 @@ def train_synthetic_otf_rendering(device,
                 target_joints2d_coco = perspective_project_torch(target_joints_coco, cam_R,
                                                                  target_cam_t,
                                                                  cam_K=cam_K)
-                target_reposed_smpl_output = smpl_model(betas=target_shape)
+
+                target_reposed_smpl_output = smpl_model(
+                    betas=target_shape,
+                    body_pose=reposed_pose_rotmats,
+                    global_orient=reposed_glob_rotmats,
+                    pose2rot=False
+                )
                 target_reposed_vertices = target_reposed_smpl_output.vertices
+                target_heights = getHeightsWithBatchSize(target_reposed_vertices, smpl_model.faces)
+                target_heights = np.asarray(target_heights)
+                target_heights = torch.FloatTensor(target_heights.reshape(target_heights.shape[0], 1)).to(device)
 
                 if proxy_rep_augment_params['deviate_verts2D']:
                     # Vertex noise augmentation to give noisy proxy representation edges
@@ -183,7 +196,8 @@ def train_synthetic_otf_rendering(device,
 
             # ---------------- FORWARD PASS ----------------
             # (gradients being computed from here on)
-            pred_cam_wp, pred_pose, pred_shape = regressor(input)
+
+            pred_cam_wp, pred_pose, pred_shape = regressor(input, target_heights)
 
             # Convert pred pose to rotation matrices
             if pred_pose.shape[-1] == 24*3:
@@ -203,8 +217,16 @@ def train_synthetic_otf_rendering(device,
             pred_joints_h36mlsp = pred_joints_h36m[:, config.H36M_TO_J14, :]
             pred_joints_coco = pred_joints_all[:, config.ALL_JOINTS_TO_COCO_MAP, :]
             pred_joints2d_coco = orthographic_project_torch(pred_joints_coco, pred_cam_wp)
-            pred_reposed_smpl_output = smpl_model(betas=pred_shape)
+            pred_reposed_smpl_output = smpl_model(
+                betas=pred_shape,
+                body_pose=reposed_pose_rotmats,
+                global_orient=reposed_glob_rotmats,
+                pose2rot=False
+            )
             pred_reposed_vertices = pred_reposed_smpl_output.vertices
+            # pred_heights = getHeightsWithBatchSize(pred_reposed_vertices, smpl_model.faces)
+            # pred_heights = np.asarray(pred_heights)
+            # pred_heights = torch.FloatTensor(pred_heights.reshape(pred_heights.shape[0], 1)).to(device)
 
             # ---------------- LOSS ----------------
             # Concatenate target pose and global rotmats for loss function
@@ -266,8 +288,16 @@ def train_synthetic_otf_rendering(device,
                 target_joints2d_coco = perspective_project_torch(target_joints_coco, cam_R,
                                                                  mean_cam_t,
                                                                  cam_K=cam_K)
-                target_reposed_smpl_output = smpl_model(betas=target_shape)
+                target_reposed_smpl_output = smpl_model(
+                    betas=target_shape,
+                    body_pose=reposed_pose_rotmats,
+                    global_orient=reposed_glob_rotmats,
+                    pose2rot=False
+                )
                 target_reposed_vertices = target_reposed_smpl_output.vertices
+                target_heights = getHeightsWithBatchSize(target_reposed_vertices, smpl_model.faces)
+                target_heights = np.asarray(target_heights)
+                target_heights = torch.FloatTensor(target_heights.reshape(target_heights.shape[0], 1)).to(device)
 
                 # INPUT PROXY REPRESENTATION GENERATION
                 input = nmr_parts_renderer(target_vertices, mean_cam_t)
@@ -295,7 +325,7 @@ def train_synthetic_otf_rendering(device,
                 input = torch.cat([input, j2d_heatmaps], dim=1)
 
                 # ---------------- FORWARD PASS ----------------
-                pred_cam_wp, pred_pose, pred_shape = regressor(input)
+                pred_cam_wp, pred_pose, pred_shape = regressor(input, target_heights)
                 # Convert pred pose to rotation matrices
                 if pred_pose.shape[-1] == 24 * 3:
                     pred_pose_rotmats = batch_rodrigues(pred_pose.contiguous().view(-1, 3))
@@ -314,8 +344,16 @@ def train_synthetic_otf_rendering(device,
                 pred_joints_h36mlsp = pred_joints_h36m[:, config.H36M_TO_J14, :]
                 pred_joints_coco = pred_joints_all[:, config.ALL_JOINTS_TO_COCO_MAP, :]
                 pred_joints2d_coco = orthographic_project_torch(pred_joints_coco, pred_cam_wp)
-                pred_reposed_smpl_output = smpl_model(betas=pred_shape)
+                pred_reposed_smpl_output = smpl_model(
+                    betas=pred_shape,
+                    body_pose=reposed_pose_rotmats,
+                    global_orient=reposed_glob_rotmats,
+                    pose2rot=False
+                )
                 pred_reposed_vertices = pred_reposed_smpl_output.vertices
+                # pred_heights = getHeightsWithBatchSize(pred_reposed_vertices, smpl_model.faces)
+                # pred_heights = np.asarray(pred_heights)
+                # pred_heights = torch.FloatTensor(pred_heights.reshape(pred_heights.shape[0], 1)).to(device)
 
                 # ---------------- LOSS ----------------
                 # Convert pose parameters to rotation matrices for loss function

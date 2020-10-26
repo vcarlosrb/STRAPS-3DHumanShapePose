@@ -3,7 +3,7 @@ from smplx.lbs import batch_rodrigues
 
 def getReposedRotmats(batch_size, device):
     pose_r = []
-    for index in range(0,72):
+    for index in range(72):
         if (index == 50) | (index == 53):
             if index == 50:
                 pose_r.append(5.6)
@@ -13,7 +13,7 @@ def getReposedRotmats(batch_size, device):
             pose_r.append(0)
 
     reposed_pose = []
-    for index in range(0, batch_size):
+    for index in range(batch_size):
         reposed_pose.append(pose_r)
     
     reposed_pose = torch.FloatTensor(reposed_pose).to(device)

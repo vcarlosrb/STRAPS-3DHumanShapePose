@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 from models.resnet import resnet18, resnet50
@@ -28,20 +29,21 @@ class SingleInputRegressor(nn.Module):
         if resnet_layers == 18:
             self.image_encoder = resnet18(in_channels=resnet_in_channels,
                                           pretrained=False)
-            self.ief_module = IEFModule([512, 512],
-                                        512,
+            self.ief_module_m = IEFModule([512, 512],
+                                        512 + 1, # +1 por la altura
                                         num_output_params,
                                         iterations=ief_iters)
         elif resnet_layers == 50:
             self.image_encoder = resnet50(in_channels=resnet_in_channels,
                                           pretrained=False)
-            self.ief_module = IEFModule([1024, 1024],
+            self.ief_module_m = IEFModule([1024, 1024],
                                         2048,
                                         num_output_params,
                                         iterations=ief_iters)
 
-    def forward(self, input):
+    def forward(self, input, height):
         input_feats = self.image_encoder(input)
-        cam_params, pose_params, shape_params = self.ief_module(input_feats)
+        input_feats_and_height = torch.cat((input_feats, height), dim=1)
+        cam_params, pose_params, shape_params = self.ief_module_m(input_feats_and_height)
 
         return cam_params, pose_params, shape_params
