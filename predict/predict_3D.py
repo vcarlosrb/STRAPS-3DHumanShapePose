@@ -130,7 +130,7 @@ def predict_3D(input,
             # Predict 3D
             regressor.eval()
             with torch.no_grad():
-                height = np.asarray([1.52])
+                height = np.asarray([1.73]) # Set height of the person
                 height = torch.FloatTensor(height.reshape(height.shape[0], 1)).to(device)
                 pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height)
                 # Convert pred pose to rotation matrices
