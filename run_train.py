@@ -74,8 +74,8 @@ train_path = 'data/amass_dataset_train.npz'
 val_path = 'data/amass_dataset_val.npz'
 
 # Path to save model weights to (without .tar extension).
-model_save_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp001_1')
-log_path = os.path.join('./logs/straps_model_transfer_learning_logs_exp001_1.pkl')
+model_save_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp002')
+log_path = os.path.join('./logs/straps_model_transfer_learning_logs_exp002.pkl')
 if not os.path.isdir('./checkpoints/model_training'):
     os.makedirs('./checkpoints/model_training')
 if not os.path.isdir('./logs'):
