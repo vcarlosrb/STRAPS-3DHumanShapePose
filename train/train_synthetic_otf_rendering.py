@@ -9,6 +9,8 @@ from metrics.train_loss_and_metrics_tracker import TrainingLossesAndMetricsTrack
 
 from bodyMeasurement.body_measurement_from_smpl import getHeightsWithBatchSize
 
+from train.smpl_model_output import getSMPLModelOutputByBtach
+
 from utils.checkpoint_utils import load_training_info_from_checkpoint
 
 from utils.cam_utils import perspective_project_torch, orthographic_project_torch
@@ -26,10 +28,20 @@ from augmentation.proxy_rep_augmentation import augment_proxy_representation, \
 
 import config
 
+def parseGender(genders, device):
+    output = []
+    for gender in genders:
+        if gender == 'female':
+            output.append([0])
+        elif gender == 'male':
+            output.append([1])
+    return torch.FloatTensor(output).to(device)
 
 def train_synthetic_otf_rendering(device,
                                   regressor,
                                   smpl_model,
+                                  smpl_model_f,
+                                  smpl_model_m,
                                   nmr_parts_renderer,
                                   train_dataset,
                                   val_dataset,
@@ -117,6 +129,7 @@ def train_synthetic_otf_rendering(device,
                 # TARGET SMPL PARAMETERS
                 target_pose = samples_batch['pose']
                 target_shape = samples_batch['shape']
+                target_gender = samples_batch['gender']
                 target_pose = target_pose.to(device)
                 target_shape = target_shape.to(device)
                 num_train_inputs_in_batch = target_pose.shape[0]  # Same as bs since drop_last=True
@@ -133,10 +146,18 @@ def train_synthetic_otf_rendering(device,
                                              delta_z_range=cam_augment_params['delta_z_range'])
 
                 # TARGET VERTICES AND JOINTS
-                target_smpl_output = smpl_model(body_pose=target_pose_rotmats,
-                                                global_orient=target_glob_rotmats,
-                                                betas=target_shape,
-                                                pose2rot=False)
+                target_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    target_pose_rotmats,
+                    target_glob_rotmats,
+                    target_shape,
+                    target_gender,
+                    device)
+                # target_smpl_output = smpl_model(body_pose=target_pose_rotmats,
+                #                                 global_orient=target_glob_rotmats,
+                #                                 betas=target_shape,
+                #                                 pose2rot=False)
                 target_vertices = target_smpl_output.vertices
                 target_joints_all = target_smpl_output.joints
                 target_joints_h36m = target_joints_all[:, config.ALL_JOINTS_TO_H36M_MAP, :]
@@ -146,12 +167,22 @@ def train_synthetic_otf_rendering(device,
                                                                  target_cam_t,
                                                                  cam_K=cam_K)
 
-                target_reposed_smpl_output = smpl_model(
-                    betas=target_shape,
-                    body_pose=reposed_pose_rotmats,
-                    global_orient=reposed_glob_rotmats,
-                    pose2rot=False
-                )
+                # target_reposed_smpl_output = smpl_model(
+                #     betas=target_shape,
+                #     body_pose=reposed_pose_rotmats,
+                #     global_orient=reposed_glob_rotmats,
+                #     pose2rot=False
+                # )
+
+                target_reposed_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    reposed_pose_rotmats,
+                    reposed_glob_rotmats,
+                    target_shape,
+                    target_gender,
+                    device)
+
                 target_reposed_vertices = target_reposed_smpl_output.vertices
                 target_heights = getHeightsWithBatchSize(target_reposed_vertices, smpl_model.faces)
                 target_heights = np.asarray(target_heights)
@@ -196,8 +227,8 @@ def train_synthetic_otf_rendering(device,
 
             # ---------------- FORWARD PASS ----------------
             # (gradients being computed from here on)
-
-            pred_cam_wp, pred_pose, pred_shape = regressor(input, target_heights)
+            genders = parseGender(target_gender, device)
+            pred_cam_wp, pred_pose, pred_shape = regressor(input, target_heights, genders)
 
             # Convert pred pose to rotation matrices
             if pred_pose.shape[-1] == 24*3:
@@ -207,22 +238,40 @@ def train_synthetic_otf_rendering(device,
                 pred_pose_rotmats = rot6d_to_rotmat(pred_pose.contiguous()).view(-1, 24, 3, 3)
 
             # PREDICTED VERTICES AND JOINTS
-            pred_smpl_output = smpl_model(body_pose=pred_pose_rotmats[:, 1:],
-                                          global_orient=pred_pose_rotmats[:, 0].unsqueeze(1),
-                                          betas=pred_shape,
-                                          pose2rot=False)
+            # pred_smpl_output = smpl_model(body_pose=pred_pose_rotmats[:, 1:],
+            #                               global_orient=pred_pose_rotmats[:, 0].unsqueeze(1),
+            #                               betas=pred_shape,
+            #                               pose2rot=False)
+
+            pred_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    pred_pose_rotmats[:, 1:],
+                    pred_pose_rotmats[:, 0].unsqueeze(1),
+                    pred_shape,
+                    target_gender,
+                    device)
+
             pred_vertices = pred_smpl_output.vertices
             pred_joints_all = pred_smpl_output.joints
             pred_joints_h36m = pred_joints_all[:, config.ALL_JOINTS_TO_H36M_MAP, :]
             pred_joints_h36mlsp = pred_joints_h36m[:, config.H36M_TO_J14, :]
             pred_joints_coco = pred_joints_all[:, config.ALL_JOINTS_TO_COCO_MAP, :]
             pred_joints2d_coco = orthographic_project_torch(pred_joints_coco, pred_cam_wp)
-            pred_reposed_smpl_output = smpl_model(
-                betas=pred_shape,
-                body_pose=reposed_pose_rotmats,
-                global_orient=reposed_glob_rotmats,
-                pose2rot=False
-            )
+            # pred_reposed_smpl_output = smpl_model(
+            #     betas=pred_shape,
+            #     body_pose=reposed_pose_rotmats,
+            #     global_orient=reposed_glob_rotmats,
+            #     pose2rot=False
+            # )
+            pred_reposed_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    reposed_pose_rotmats,
+                    reposed_glob_rotmats,
+                    pred_shape,
+                    target_gender,
+                    device)
             pred_reposed_vertices = pred_reposed_smpl_output.vertices
             # pred_heights = getHeightsWithBatchSize(pred_reposed_vertices, smpl_model.faces)
             # pred_heights = np.asarray(pred_heights)
@@ -272,14 +321,25 @@ def train_synthetic_otf_rendering(device,
                 # TARGET SMPL PARAMETERS
                 target_pose = samples_batch['pose']
                 target_shape = samples_batch['shape']
+                target_gender = samples_batch['gender']
                 target_pose = target_pose.to(device)
                 target_shape = target_shape.to(device)
                 num_val_inputs_in_batch = target_pose.shape[0]  # Same as bs since drop_last=True
 
                 # TARGET VERTICES AND JOINTS
-                target_smpl_output = smpl_model(body_pose=target_pose[:, 3:],
-                                                global_orient=target_pose[:, :3],
-                                                betas=target_shape)
+                # target_smpl_output = smpl_model(body_pose=target_pose[:, 3:],
+                #                                 global_orient=target_pose[:, :3],
+                #                                 betas=target_shape)
+
+                target_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    target_pose[:, 3:],
+                    target_pose[:, :3],
+                    target_shape,
+                    target_gender,
+                    device)
+
                 target_vertices = target_smpl_output.vertices
                 target_joints_all = target_smpl_output.joints
                 target_joints_h36m = target_joints_all[:, config.ALL_JOINTS_TO_H36M_MAP, :]
@@ -288,12 +348,22 @@ def train_synthetic_otf_rendering(device,
                 target_joints2d_coco = perspective_project_torch(target_joints_coco, cam_R,
                                                                  mean_cam_t,
                                                                  cam_K=cam_K)
-                target_reposed_smpl_output = smpl_model(
-                    betas=target_shape,
-                    body_pose=reposed_pose_rotmats,
-                    global_orient=reposed_glob_rotmats,
-                    pose2rot=False
-                )
+                # target_reposed_smpl_output = smpl_model(
+                #     betas=target_shape,
+                #     body_pose=reposed_pose_rotmats,
+                #     global_orient=reposed_glob_rotmats,
+                #     pose2rot=False
+                # )
+
+                target_reposed_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    reposed_pose_rotmats,
+                    reposed_glob_rotmats,
+                    target_shape,
+                    target_gender,
+                    device)
+
                 target_reposed_vertices = target_reposed_smpl_output.vertices
                 target_heights = getHeightsWithBatchSize(target_reposed_vertices, smpl_model.faces)
                 target_heights = np.asarray(target_heights)
@@ -325,7 +395,8 @@ def train_synthetic_otf_rendering(device,
                 input = torch.cat([input, j2d_heatmaps], dim=1)
 
                 # ---------------- FORWARD PASS ----------------
-                pred_cam_wp, pred_pose, pred_shape = regressor(input, target_heights)
+                genders = parseGender(target_gender, device)
+                pred_cam_wp, pred_pose, pred_shape = regressor(input, target_heights, genders)
                 # Convert pred pose to rotation matrices
                 if pred_pose.shape[-1] == 24 * 3:
                     pred_pose_rotmats = batch_rodrigues(pred_pose.contiguous().view(-1, 3))
@@ -334,22 +405,40 @@ def train_synthetic_otf_rendering(device,
                     pred_pose_rotmats = rot6d_to_rotmat(pred_pose.contiguous()).view(-1, 24, 3, 3)
 
                 # PREDICTED VERTICES AND JOINTS
-                pred_smpl_output = smpl_model(body_pose=pred_pose_rotmats[:, 1:],
-                                              global_orient=pred_pose_rotmats[:, 0].unsqueeze(1),
-                                              betas=pred_shape,
-                                              pose2rot=False)
+                # pred_smpl_output = smpl_model(body_pose=pred_pose_rotmats[:, 1:],
+                #                               global_orient=pred_pose_rotmats[:, 0].unsqueeze(1),
+                #                               betas=pred_shape,
+                #                               pose2rot=False)
+
+                pred_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    pred_pose_rotmats[:, 1:],
+                    pred_pose_rotmats[:, 0].unsqueeze(1),
+                    pred_shape,
+                    target_gender,
+                    device)
+
                 pred_vertices = pred_smpl_output.vertices
                 pred_joints_all = pred_smpl_output.joints
                 pred_joints_h36m = pred_joints_all[:, config.ALL_JOINTS_TO_H36M_MAP, :]
                 pred_joints_h36mlsp = pred_joints_h36m[:, config.H36M_TO_J14, :]
                 pred_joints_coco = pred_joints_all[:, config.ALL_JOINTS_TO_COCO_MAP, :]
                 pred_joints2d_coco = orthographic_project_torch(pred_joints_coco, pred_cam_wp)
-                pred_reposed_smpl_output = smpl_model(
-                    betas=pred_shape,
-                    body_pose=reposed_pose_rotmats,
-                    global_orient=reposed_glob_rotmats,
-                    pose2rot=False
-                )
+                # pred_reposed_smpl_output = smpl_model(
+                #     betas=pred_shape,
+                #     body_pose=reposed_pose_rotmats,
+                #     global_orient=reposed_glob_rotmats,
+                #     pose2rot=False
+                # )
+                pred_reposed_smpl_output = getSMPLModelOutputByBtach(
+                    smpl_model_f,
+                    smpl_model_m,
+                    reposed_pose_rotmats,
+                    reposed_glob_rotmats,
+                    pred_shape,
+                    target_gender,
+                    device)
                 pred_reposed_vertices = pred_reposed_smpl_output.vertices
                 # pred_heights = getHeightsWithBatchSize(pred_reposed_vertices, smpl_model.faces)
                 # pred_heights = np.asarray(pred_heights)

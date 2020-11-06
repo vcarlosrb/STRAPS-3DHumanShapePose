@@ -19,23 +19,26 @@ class SyntheticTrainingDataset(Dataset):
         assert params_from in ['all', 'h36m', 'up3d', '3dpw', 'not_amass']
 
         data = np.load(npz_path)
-        self.fnames = data['fnames']
+        #self.fnames = data['fnames']
         self.poses = data['poses']
         self.shapes = data['shapes']
+        self.genders = data['genders']
 
         if params_from != 'all':
             if params_from == 'not_amass':
                 indices = [i for i, x in enumerate(self.fnames)
                            if x.startswith('h36m') or x.startswith('up3d')
                            or x.startswith('3dpw')]
-                self.fnames = [self.fnames[i] for i in indices]
+                #self.fnames = [self.fnames[i] for i in indices]
                 self.poses = [self.poses[i] for i in indices]
                 self.shapes = [self.shapes[i] for i in indices]
+                self.genders = [self.genders[i] for i in indices]
             else:
                 indices = [i for i, x in enumerate(self.fnames) if x.startswith(params_from)]
-                self.fnames = [self.fnames[i] for i in indices]
+                #self.fnames = [self.fnames[i] for i in indices]
                 self.poses = [self.poses[i] for i in indices]
                 self.shapes = [self.shapes[i] for i in indices]
+                self.genders = [self.genders[i] for i in indices]
 
     def __len__(self):
         return len(self.poses)
@@ -46,6 +49,7 @@ class SyntheticTrainingDataset(Dataset):
 
         pose = self.poses[index]
         shape = self.shapes[index]
+        gender = self.genders[index]
         assert pose.shape == (72,) and shape.shape == (10,), \
             "Poses and shapes are wrong: {}, {}, {}".format(self.fnames[index],
                                                             pose.shape, shape.shape)
@@ -54,4 +58,5 @@ class SyntheticTrainingDataset(Dataset):
         shape = torch.from_numpy(shape.astype(np.float32))
 
         return {'pose': pose,
-                'shape': shape}
+                'shape': shape,
+                'gender': gender}

@@ -41,7 +41,7 @@ print("IEF Num iters:", ief_iters)
 
 # ----------------------- Hyperparameters -----------------------
 num_epochs = 50
-batch_size = 60
+batch_size = 40
 lr = 0.0001
 epochs_per_save = 2
 print("\nBatch size:", batch_size)
@@ -69,9 +69,9 @@ print("Save val metrics:", save_val_metrics)
 
 # ----------------------- Paths -----------------------
 # Path to npz with training data.
-train_path = 'data/amass_up3d_3dpw_train_sample.npz'
+train_path = 'data/amass_dataset_train.npz'
 # Path to npz with validation data.
-val_path = 'data/up3d_3dpw_val_sample.npz'
+val_path = 'data/amass_dataset_val.npz'
 
 # Path to save model weights to (without .tar extension).
 model_save_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp001_1')
@@ -109,6 +109,9 @@ print("\nRegressor model Loaded. ", num_params, "trainable parameters.")
 smpl_model = SMPL(config.SMPL_MODEL_DIR,
                   batch_size=batch_size)
 
+smpl_model_f = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='female')
+smpl_model_m = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='male')
+
 # Camera and NMR part/silhouette renderer
 # Assuming camera rotation is identity (since it is dealt with by global_orients in SMPL)
 mean_cam_t = np.array([0., 0.2, 42.])
@@ -127,6 +130,8 @@ nmr_parts_renderer = NMRRenderer(batch_size,
 
 regressor.to(device)
 smpl_model.to(device)
+smpl_model_f.to(device)
+smpl_model_m.to(device)
 nmr_parts_renderer.to(device)
 
 # ----------------------- Augmentation -----------------------
@@ -225,18 +230,20 @@ def transfer_learning(checkpoint_path, model, criterion, optimiser):
 
     model_dict.update(new_dict)
     model.load_state_dict(new_dict)
-    optimiser.load_state_dict(checkpoint['optimiser_state_dict'])
+    #optimiser.load_state_dict(checkpoint['optimiser_state_dict'])
     criterion.load_state_dict(checkpoint['criterion_state_dict'])
 
     return model, criterion, optimiser
 
 
-n_checkpoint_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp001_epoch34.tar')
+n_checkpoint_path = os.path.join('./checkpoints/straps_model_checkpoint.tar')
 regression, criterion, optimiser = transfer_learning(n_checkpoint_path, regressor, criterion, optimiser)
 
 train_synthetic_otf_rendering(device=device,
                               regressor=regressor,
                               smpl_model=smpl_model,
+                              smpl_model_f=smpl_model_f,
+                              smpl_model_m=smpl_model_m,
                               nmr_parts_renderer=nmr_parts_renderer,
                               train_dataset=train_dataset,
                               val_dataset=val_dataset,
