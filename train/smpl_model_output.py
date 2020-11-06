@@ -5,7 +5,7 @@ class SMPLOutput(object):
     vertices = []
     joints = []
 
-def getSMPLModelOutputByBtach(smpl_mode_f, smpl_mode_m, pose_rotmats, glob_rotmats, shape, gender, device):
+def getSMPLModelOutputByBtach(smpl_mode_f, smpl_mode_m, pose_rotmats, glob_rotmats, shape, gender, pose2rot, device):
     vertices = []
     joints = []
 
@@ -18,14 +18,14 @@ def getSMPLModelOutputByBtach(smpl_mode_f, smpl_mode_m, pose_rotmats, glob_rotma
                 betas=n_shape,
                 body_pose=n_pose_rotmats,
                 global_orient=n_glob_rotmats,
-                pose2rot=False
+                pose2rot=pose2rot
             )
         elif gender[index] == 'male':
             smpl_output = smpl_mode_m(
                 betas=n_shape,
                 body_pose=n_pose_rotmats,
                 global_orient=n_glob_rotmats,
-                pose2rot=False
+                pose2rot=pose2rot
             )
         vertices.append(smpl_output.vertices)
         joints.append(smpl_output.joints)

@@ -69,13 +69,13 @@ print("Save val metrics:", save_val_metrics)
 
 # ----------------------- Paths -----------------------
 # Path to npz with training data.
-train_path = 'data/amass_dataset_train.npz'
+train_path = 'data/amass_dataset_train_sample.npz'
 # Path to npz with validation data.
-val_path = 'data/amass_dataset_val.npz'
+val_path = 'data/amass_dataset_val_sample.npz'
 
 # Path to save model weights to (without .tar extension).
-model_save_path = os.path.join('./checkpoints/model_training/straps_model_transfer_learning_checkpoint_exp002')
-log_path = os.path.join('./logs/straps_model_transfer_learning_logs_exp002.pkl')
+model_save_path = os.path.join('./checkpoints/straps_model_transfer_learning_checkpoint_exp002')
+log_path = os.path.join('./logs/straps_model_transfer_learning_logs_exp002_88.pkl')
 if not os.path.isdir('./checkpoints/model_training'):
     os.makedirs('./checkpoints/model_training')
 if not os.path.isdir('./logs'):

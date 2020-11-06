@@ -153,6 +153,7 @@ def train_synthetic_otf_rendering(device,
                     target_glob_rotmats,
                     target_shape,
                     target_gender,
+                    False,
                     device)
                 # target_smpl_output = smpl_model(body_pose=target_pose_rotmats,
                 #                                 global_orient=target_glob_rotmats,
@@ -181,6 +182,7 @@ def train_synthetic_otf_rendering(device,
                     reposed_glob_rotmats,
                     target_shape,
                     target_gender,
+                    False,
                     device)
 
                 target_reposed_vertices = target_reposed_smpl_output.vertices
@@ -250,6 +252,7 @@ def train_synthetic_otf_rendering(device,
                     pred_pose_rotmats[:, 0].unsqueeze(1),
                     pred_shape,
                     target_gender,
+                    False,
                     device)
 
             pred_vertices = pred_smpl_output.vertices
@@ -271,6 +274,7 @@ def train_synthetic_otf_rendering(device,
                     reposed_glob_rotmats,
                     pred_shape,
                     target_gender,
+                    False,
                     device)
             pred_reposed_vertices = pred_reposed_smpl_output.vertices
             # pred_heights = getHeightsWithBatchSize(pred_reposed_vertices, smpl_model.faces)
@@ -338,6 +342,7 @@ def train_synthetic_otf_rendering(device,
                     target_pose[:, :3],
                     target_shape,
                     target_gender,
+                    True,
                     device)
 
                 target_vertices = target_smpl_output.vertices
@@ -362,6 +367,7 @@ def train_synthetic_otf_rendering(device,
                     reposed_glob_rotmats,
                     target_shape,
                     target_gender,
+                    False,
                     device)
 
                 target_reposed_vertices = target_reposed_smpl_output.vertices
@@ -417,6 +423,7 @@ def train_synthetic_otf_rendering(device,
                     pred_pose_rotmats[:, 0].unsqueeze(1),
                     pred_shape,
                     target_gender,
+                    False,
                     device)
 
                 pred_vertices = pred_smpl_output.vertices
@@ -438,6 +445,7 @@ def train_synthetic_otf_rendering(device,
                     reposed_glob_rotmats,
                     pred_shape,
                     target_gender,
+                    False,
                     device)
                 pred_reposed_vertices = pred_reposed_smpl_output.vertices
                 # pred_heights = getHeightsWithBatchSize(pred_reposed_vertices, smpl_model.faces)
