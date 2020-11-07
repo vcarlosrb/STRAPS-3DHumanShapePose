@@ -95,7 +95,7 @@ def predict_3D(input,
     joints2D_predictor, silhouette_predictor = setup_detectron2_predictors(silhouettes_from=silhouettes_from)
 
     # Set-up SMPL model.
-    smpl = SMPL(config.SMPL_MODEL_DIR, batch_size=1).to(device)
+    smpl = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='male').to(device)
 
     if render_vis:
         # Set-up renderer for visualisation.
@@ -130,9 +130,11 @@ def predict_3D(input,
             # Predict 3D
             regressor.eval()
             with torch.no_grad():
-                height = np.asarray([1.73]) # Set height of the person
+                height = np.asarray([1.65]) # Set height of the person
                 height = torch.FloatTensor(height.reshape(height.shape[0], 1)).to(device)
-                pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height)
+                gender = np.asarray([1])
+                gender = torch.FloatTensor(gender.reshape(gender.shape[0], 1)).to(device)
+                pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height, gender)
                 # Convert pred pose to rotation matrices
                 if pred_pose.shape[-1] == 24 * 3:
                     pred_pose_rotmats = batch_rodrigues(pred_pose.contiguous().view(-1, 3))
