@@ -153,6 +153,7 @@ STRAPS
 # Evaluation dataset
 ssp-3d
 evaluation/results
+demo
 
 # Logs
 logs

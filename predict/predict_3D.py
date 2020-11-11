@@ -95,7 +95,8 @@ def predict_3D(input,
     joints2D_predictor, silhouette_predictor = setup_detectron2_predictors(silhouettes_from=silhouettes_from)
 
     # Set-up SMPL model.
-    smpl = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='male').to(device)
+    smpl_f = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='female').to(device)
+    smpl_m = SMPL(config.SMPL_MODEL_DIR, batch_size=1, gender='male').to(device)
 
     if render_vis:
         # Set-up renderer for visualisation.
@@ -106,6 +107,15 @@ def predict_3D(input,
                         f.endswith('.jpg')]
         for fname in image_fnames:
             print("Predicting on:", fname)
+            npz_file = fname.split('.')[0] + '.npz'
+            data = np.load(os.path.join(input + '/data_processed/', npz_file))
+            if data['gender'] == 'male':
+                smpl = smpl_m
+                gender = np.asarray([1])
+            elif data['gender'] == 'female':
+                smpl = smpl_f
+                gender = np.asarray([0])
+            gender = torch.FloatTensor(gender.reshape(gender.shape[0], 1)).to(device)
             image = cv2.imread(os.path.join(input, fname))
             # Pre-process for 2D detectors
             image = pad_to_square(image)
@@ -130,10 +140,8 @@ def predict_3D(input,
             # Predict 3D
             regressor.eval()
             with torch.no_grad():
-                height = np.asarray([1.65]) # Set height of the person
+                height = data['height'] # Set height of the person
                 height = torch.FloatTensor(height.reshape(height.shape[0], 1)).to(device)
-                gender = np.asarray([1])
-                gender = torch.FloatTensor(gender.reshape(gender.shape[0], 1)).to(device)
                 pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height, gender)
                 # Convert pred pose to rotation matrices
                 if pred_pose.shape[-1] == 24 * 3:

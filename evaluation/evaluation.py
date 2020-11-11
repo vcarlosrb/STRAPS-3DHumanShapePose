@@ -126,10 +126,17 @@ def evaluate(input,
     height = np.asarray([height])
     height = torch.FloatTensor(height.reshape(height.shape[0], 1)).to(device)
 
+    if gender == 'm':
+        gender_n = np.asarray([1])
+        gender_n = torch.FloatTensor(gender_n.reshape(gender_n.shape[0], 1)).to(device)
+    elif gender == 'f':
+        gender_n = np.asarray([0])
+        gender_n = torch.FloatTensor(gender_n.reshape(gender_n.shape[0], 1)).to(device)
+
     # Predict 3D
     regressor.eval()
     with torch.no_grad():
-        pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height)
+        pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height, gender_n)
 
     #pve_neutral_pose_scale = compute_pve_neutral_pose_scale_corrected(pred_shape.to(device).detach(), torch.from_numpy(shape.reshape(1, shape.shape[0])).to(device).detach(), gender, device)
     pve_neutral_pose_scale, weight_error, height_error, chest_error, hip_error = measurementError(pred_shape.to(device).detach(), torch.from_numpy(shape.reshape(1, shape.shape[0])).to(device).detach(), gender, device)
