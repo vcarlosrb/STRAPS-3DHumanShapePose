@@ -106,6 +106,8 @@ def predict_3D(input,
                         f.endswith('.jpg')]
         for fname in image_fnames:
             print("Predicting on:", fname)
+            npz_file = fname.split('.')[0] + '.npz'
+            data = np.load(os.path.join(input + '/data_processed/', npz_file))
             image = cv2.imread(os.path.join(input, fname))
             # Pre-process for 2D detectors
             image = pad_to_square(image)
@@ -130,7 +132,7 @@ def predict_3D(input,
             # Predict 3D
             regressor.eval()
             with torch.no_grad():
-                height = np.asarray([1.73]) # Set height of the person
+                height = data['height'] # Set height of the person
                 height = torch.FloatTensor(height.reshape(height.shape[0], 1)).to(device)
                 pred_cam_wp, pred_pose, pred_shape = regressor(proxy_rep, height)
                 # Convert pred pose to rotation matrices
